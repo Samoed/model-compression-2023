@@ -11,10 +11,9 @@ class ModelConfig(YamlModel):
 
 class AppConfig(YamlModel):
     # model parameters
-    models: List[ModelConfig]
+    models: list[ModelConfig]
     # app parameters
     port: int
     workers: int
     # async queues parameters
     timeout: float
-

@@ -1,15 +1,14 @@
-from typing import List
 import asyncio
+from typing import List
 
 from pydantic import ValidationError
 
+from handlers.data_models import RecognitionSchema, ResponseSchema
 from infrastructure.models import TextClassificationModelData
 from service.recognition import TextClassificationService
-from handlers.data_models import ResponseSchema, RecognitionSchema
 
 
 class PredictionHandler:
-
     def __init__(self, recognition_service: TextClassificationService, timeout: float):
         self.recognition_service = recognition_service
         self.timeout = timeout
@@ -30,9 +29,8 @@ class PredictionHandler:
 
             if texts:
                 model = next(
-                        (model for model in self.recognition_service.service_models if model.name == model_name),
-                        None
-                        )
+                    (model for model in self.recognition_service.service_models if model.name == model_name), None
+                )
                 if model:
                     for text_batch in self._perform_batches(texts, max_batch_size):
                         inputs = model.tokenize_texts(texts)
@@ -40,7 +38,7 @@ class PredictionHandler:
                         for rq, out in zip(queues, outs):
                             await rq.put(out)
 
-    def serialize_answer(self, results: List[TextClassificationModelData]) -> ResponseSchema:
+    def serialize_answer(self, results: list[TextClassificationModelData]) -> ResponseSchema:
         res_model = {rec.model_name: self._recognitions_to_schema(rec) for rec in results}
         return ResponseSchema(**res_model)
 
@@ -49,7 +47,6 @@ class PredictionHandler:
             recognition.label = recognition.label.upper()
         return RecognitionSchema(score=recognition.score, label=recognition.label)
 
-    def _perform_batches(self, texts: List[str], max_batch_size):
+    def _perform_batches(self, texts: list[str], max_batch_size):
         for i in range(0, len(texts), max_batch_size):
-            yield texts[i:i + max_batch_size]
-
+            yield texts[i : i + max_batch_size]
