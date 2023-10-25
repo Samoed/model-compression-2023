@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import List
 
 import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from optimum.onnxruntime import ORTModelForSequenceClassification
+from optimum.pipelines import pipeline
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 @dataclass
@@ -27,17 +28,16 @@ class BaseTextClassificationModel(ABC):
         ...
 
     @abstractmethod
-    def __call__(self, inputs) -> list[TextClassificationModelData]:
+    def __call__(self, inputs) -> List[TextClassificationModelData]:
         ...
 
 
 class TransformerTextClassificationModel(BaseTextClassificationModel):
     def _load_model(self):
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
-        self.model = self.model.to(self.device)
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path).to(self.device)
 
-    def tokenize_texts(self, texts: list[str]):
+    def tokenize_texts(self, texts: List[str]):
         inputs = self.tokenizer.batch_encode_plus(
             texts,
             add_special_tokens=True,
@@ -60,8 +60,29 @@ class TransformerTextClassificationModel(BaseTextClassificationModel):
         ]
         return results
 
-    def __call__(self, inputs) -> list[TextClassificationModelData]:
+    def __call__(self, inputs) -> List[TextClassificationModelData]:
         logits = self.model(**inputs).logits
         predictions = self._results_from_logits(logits)
-        predictions = [TextClassificationModelData(self.name, **prediction) for prediction in predictions]
+        predictions = [
+            TextClassificationModelData(self.name, **prediction)
+            for prediction in predictions
+        ]
         return predictions
+
+
+class CustomTransformerTextClassificationModel(TransformerTextClassificationModel):
+    def _load_model(self):
+        model = ORTModelForSequenceClassification.from_pretrained(
+            self.model_path, from_transformers=True
+        )
+        tokenizer = AutoTokenizer.from_pretrained(self.tokenizer)
+        self.model = pipeline(
+            task="text-classification",
+            model=model,
+            tokenizer=tokenizer,
+            accelerator="ort",
+            device=self.device,
+        )
+
+    def __call__(self, inputs: List[str]) -> List[TextClassificationModelData]:
+        return self.model(inputs)

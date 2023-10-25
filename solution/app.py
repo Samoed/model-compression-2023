@@ -10,11 +10,11 @@ from starlette.requests import Request
 from configs.config import AppConfig
 from handlers.data_models import ResponseSchema
 from handlers.recognition import PredictionHandler
-from infrastructure.models import TransformerTextClassificationModel
+from infrastructure.models import CustomTransformerTextClassificationModel
 from service.recognition import TextClassificationService
 
 config = AppConfig.parse_file("./configs/app_config.yaml")
-models = [TransformerTextClassificationModel(conf.model, conf.model_path, conf.tokenizer) for conf in config.models]
+models = [CustomTransformerTextClassificationModel(conf.model, conf.model_path, conf.tokenizer) for conf in config.models]
 
 recognition_service = TextClassificationService(models)
 recognition_handler = PredictionHandler(recognition_service, config.timeout)

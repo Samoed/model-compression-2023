@@ -11,7 +11,7 @@ class ModelConfig(YamlModel):
 
 class AppConfig(YamlModel):
     # model parameters
-    models: list[ModelConfig]
+    models: List[ModelConfig]
     # app parameters
     port: int
     workers: int
